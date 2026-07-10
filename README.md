@@ -1,0 +1,57 @@
+# geo-audit-tool
+
+自社/クライアントのコンテンツが**生成AI検索(ChatGPT・Perplexity 等)で引用・要約されやすいか**を
+診断し、改善提案を出す **GEO(Generative Engine Optimization)診断ツール**の最小版。
+
+## 差別化ポイント
+
+競合の GEO 診断が「定性的なコンサルコメント」中心なのに対し、本ツールは:
+
+1. **構造スコアの数値化** — 引用されやすさを 7 因子・100点満点で**再現性のあるルールベース**採点。
+   LLM はスコアを動かさず定性補足のみに使うため、診断結果がブレない。
+2. **競合比較** — 複数サイトを並べて GEO スコアをランキングし、**首位との因子別ギャップ**を提示。
+3. **引用likelihood 判定** — 「事実性(数値/出典)」と「冒頭の直接回答」を重み付けし、
+   引用される確率を 0-1 で出力。
+
+いずれも**ネットワーク・API キー不要**(rule-based)で動作するため clone 直後に試せる。
+
+## スコア因子(合計100)
+
+| 因子 | 満点 | 見るもの |
+|------|-----:|---------|
+| answer_upfront | 15 | 冒頭の結論/要約 |
+| headings | 15 | 見出し階層 + 疑問形見出し |
+| structured | 15 | 箇条書き・表 |
+| qa_format | 15 | FAQ / Q&A |
+| **evidence** | **20** | 統計・数値 + 出典(最重要) |
+| freshness | 10 | 公開日/更新日 |
+| entity_clarity | 10 | 定義文「XとはYである」 |
+
+## クイックスタート
+
+```bash
+# デモ(ネットワーク不要): 良質記事 vs 競合を診断してレポート出力
+python demo.py
+
+# テスト
+python -m pytest -q
+
+# URL を直接診断(要ネットワーク)
+python -c "from geo_audit import crawler, score_content, render_report; \
+print(render_report(score_content(crawler.fetch('https://example.com'))))"
+```
+
+## 構成
+
+```
+geo_audit/
+  crawler.py               # URL取得 + HTML構造抽出(from_html/from_file/fetch)
+  analysis/
+    structure_score.py     # ★差別化コア: 7因子GEOスコア + 改善提案
+    citation_check.py       # 引用likelihood 判定
+    competitor.py           # 競合比較 + 首位ギャップ
+  report.py                # Markdown レポート生成
+  prompts/analysis_prompt.md  # LLM定性補足用(スコアは変えない)
+demo.py
+tests/                     # 外部依存なしで PASS
+```
