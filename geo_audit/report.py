@@ -6,6 +6,8 @@ from typing import Optional
 from .analysis.citation_check import CitationVerdict, assess
 from .analysis.competitor import CompetitorReport
 from .analysis.structure_score import GeoScore
+from .improve import ImprovementPlan
+from .simulate import SimulationReport
 
 
 def _bar(score: float, maximum: float, width: int = 10) -> str:
@@ -62,3 +64,33 @@ def render_report(score: GeoScore, url: Optional[str] = None,
             lines.append("")
 
     return "\n".join(lines)
+
+
+def render_full_report(score: GeoScore, url: Optional[str] = None,
+                       verdict: Optional[CitationVerdict] = None,
+                       competitors: Optional[CompetitorReport] = None,
+                       simulation: Optional[SimulationReport] = None,
+                       plan: Optional[ImprovementPlan] = None) -> str:
+    """①スコア ②言及シミュレーション ③改善計画 を1本にまとめた完全版レポート."""
+    parts = [render_report(score, url=url, verdict=verdict, competitors=competitors)]
+
+    if simulation is not None:
+        s = ["## 生成AI検索 言及シミュレーション",
+             f"引用率: {simulation.citation_rate:.0%}", "",
+             "| クエリ | 引用 | 確率 | 引用されうる一節 |",
+             "|--------|:---:|----:|----------------|"]
+        for r in simulation.results:
+            mark = "○" if r.cited else "×"
+            s.append(f"| {r.query} | {mark} | {r.cite_probability:.2f} | {r.quoted_passage or '-'} |")
+        parts.append("\n".join(s))
+
+    if plan is not None:
+        p = ["## 改善計画(期待スコア上昇)",
+             f"現在 {plan.current_total:.1f} → 施策後(見込) **{plan.projected_total:.1f}** / 100", "",
+             "| 優先 | 施策 | 現在→満点 | 期待加点 |",
+             "|-----:|------|:---------:|--------:|"]
+        for i, a in enumerate(plan.actions, start=1):
+            p.append(f"| {i} | {a.action} | {a.current:.0f}/{a.max_score:.0f} | +{a.expected_uplift:.0f} |")
+        parts.append("\n".join(p))
+
+    return "\n\n".join(parts)

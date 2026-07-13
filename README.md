@@ -27,18 +27,26 @@
 | freshness | 10 | 公開日/更新日 |
 | entity_clarity | 10 | 定義文「XとはYである」 |
 
+## 全機能(3ステップ)
+
+| # | 機能 | 実装 |
+|---|------|------|
+| ① | 対象URLのコンテンツ取得 | `crawler.fetch` / `from_file` / `from_html` |
+| ② | 生成AI検索での**言及シミュレーション分析** | `simulate.MentionSimulator`(引用率・引用される一節・模擬回答) |
+| ③ | **改善レポート生成**(期待スコア上昇つき) | `improve.build_plan` + `report.render_full_report` |
+
 ## クイックスタート
 
 ```bash
 # デモ(ネットワーク不要): 良質記事 vs 競合を診断してレポート出力
 python demo.py
 
-# テスト
-python -m pytest -q
+# CLI: URL / ファイルを診断(スコア + 言及シミュレーション + 改善計画)
+python -m geo_audit --file page.html --query "GEO とは" --query "やり方"
+python -m geo_audit --url https://example.com
 
-# URL を直接診断(要ネットワーク)
-python -c "from geo_audit import crawler, score_content, render_report; \
-print(render_report(score_content(crawler.fetch('https://example.com'))))"
+# テスト(16件)
+python -m pytest -q
 ```
 
 ## 構成
