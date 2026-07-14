@@ -35,6 +35,20 @@
 | ② | 生成AI検索での**言及シミュレーション分析** | `simulate.MentionSimulator`(引用率・引用される一節・模擬回答) |
 | ③ | **改善レポート生成**(期待スコア上昇つき) | `improve.build_plan` + `report.render_full_report` |
 
+## 本番構成（SQLite + HTMLレポート + Vite 2画面）
+
+- **DB**: `geo_audit/db.py`（SQLite・標準ライブラリ）診断履歴保存＋**テナント分離**（越境不可を自動テスト）
+- **API**: `geo_audit/api.py`（FastAPI）。/v1/audit（URL/HTML診断）/v1/report（HTML）/v1/history
+- **HTMLレポート**: `geo_audit/report_html.py`（スコア＋因子＋言及シミュ＋改善計画、XSSエスケープ）
+- **フロント**: `frontend/`（React+Vite）。**URL入力**画面＋**結果ダッシュボード**の2画面。ビルド不要は `frontend/standalone.html`
+- **CI**: `.github/workflows/ci.yml`
+
+```bash
+uvicorn geo_audit.api:app --reload
+cd frontend && npm install && npm run dev     # or: open frontend/standalone.html
+python -m pytest -q                            # テスト21件(DB/テナント分離/HTMLレポート/API E2E含む)
+```
+
 ## クイックスタート
 
 ```bash

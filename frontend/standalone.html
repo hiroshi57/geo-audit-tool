@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEO診断ツール(スタンドアロン)</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body{font-family:system-ui,sans-serif;background:#f7f8fa;margin:0;padding:24px;color:#1a1a2e}
+    .wrap{max-width:760px;margin:0 auto} h1{color:#2bb673;font-size:22px}
+    .card{background:#fff;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .big{font-size:40px;color:#2bb673;font-weight:bold}
+    table{border-collapse:collapse;width:100%} th,td{border:1px solid #dde;padding:6px 8px} th{background:#eafaf1}
+    button.primary{background:#2bb673;color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;margin-top:8px}
+    textarea,input{padding:6px;border:1px solid #ccd;border-radius:6px}
+  </style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel" data-presets="react">
+  // デモ結果(バックエンド無しで画面確認)
+  const DEMO={score:{total:68.0,factors:[
+    {name:"answer_upfront",score:15,max:15,note:"冒頭に結論あり"},
+    {name:"evidence",score:11,max:20,note:"数値2/出典あり"},
+    {name:"structured",score:4,max:15,note:"リスト1"}]},
+    simulation:{citation_rate:1.0,results:[{query:"GEO とは",cited:true,cite_probability:0.81}]},
+    plan:{current_total:68,projected_total:95,actions:[
+      {action:"箇条書き・比較表を追加",expected_uplift:11},{action:"統計・数値と出典を明記",expected_uplift:9}]}};
+  function Bar({v,mx}){return <div style={{background:"#e4e7ee",borderRadius:4,width:140,height:12,display:"inline-block"}}>
+    <div style={{background:"#2bb673",height:12,borderRadius:4,width:(v/mx*140)+"px"}}></div></div>;}
+  function App(){
+    const [res,setRes]=React.useState(null);
+    return (<div className="wrap"><h1>GEO診断ツール <small style={{fontSize:12,color:"#889"}}>(デモ)</small></h1>
+      <div className="card"><h2>診断対象</h2>
+        <textarea rows="3" style={{width:"100%"}} placeholder="URL または HTML(デモは固定結果)"></textarea>
+        <button className="primary" onClick={()=>setRes(DEMO)}>GEO診断を実行</button></div>
+      {res&&(<div className="card"><h2>総合GEOスコア</h2>
+        <div className="big">{res.score.total.toFixed(1)} <small>/100</small></div>
+        <h3>因子別内訳</h3><table><tr><th>因子</th><th>スコア</th><th></th><th>メモ</th></tr>
+          {res.score.factors.map(f=>(<tr key={f.name}><td>{f.name}</td><td>{f.score}/{f.max}</td>
+            <td><Bar v={f.score} mx={f.max}/></td><td>{f.note}</td></tr>))}</table>
+        <h3>言及シミュレーション(引用率 {Math.round(res.simulation.citation_rate*100)}%)</h3>
+        <h3>改善計画({res.plan.current_total}→見込{res.plan.projected_total})</h3>
+        <ul>{res.plan.actions.map((a,i)=>(<li key={i}>{a.action} <b>(+{a.expected_uplift})</b></li>))}</ul>
+      </div>)}</div>);
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script></body></html>

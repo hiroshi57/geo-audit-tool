@@ -1,3 +1,5 @@
-# コアは標準ライブラリのみで動作(HTML解析は html.parser, 取得は urllib)。
-# 以下はテスト用。
+# コアは標準ライブラリのみで動作(HTML解析は html.parser, 取得は urllib)。API層は FastAPI。
 pytest>=8.0
+fastapi>=0.110
+uvicorn>=0.29
+httpx>=0.27
