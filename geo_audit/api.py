@@ -66,6 +66,22 @@ def create_app():  # pragma: no cover
     def history(t: str = Depends(tenant)):
         return {"history": STORE.history(t)}
 
+    class SoVIn(BaseModel):
+        sites: dict          # {name: html}
+        queries: list[str] | None = None
+        own_name: str
+
+    @app.post("/v1/share-of-voice")
+    def share_of_voice(body: SoVIn, t: str = Depends(tenant)):
+        # 生成AI検索における競合間の引用シェア(Share of Voice)
+        from . import crawler as _crawler
+        from .share_of_voice import compute_share_of_voice
+        contents = {name: _crawler.from_html(html, url=None) for name, html in body.sites.items()}
+        if body.own_name not in contents:
+            raise HTTPException(400, "own_name must be in sites")
+        sov = compute_share_of_voice(contents, body.queries or DEFAULT_QUERIES, body.own_name)
+        return sov.as_dict()
+
     @app.get("/healthz")
     def healthz():
         return {"status": "ok"}
