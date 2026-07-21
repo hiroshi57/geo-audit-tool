@@ -8,128 +8,142 @@
   <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
   <style>
     body{font-family:system-ui,sans-serif;background:#f5f7f9;margin:0;padding:24px;color:#152238}
-    .wrap{max-width:820px;margin:0 auto} h1{color:#17a673;font-size:22px}
-    h2{font-size:16px;margin:4px 0 10px} .sub{color:#8a97a6;font-size:12px}
+    .wrap{max-width:860px;margin:0 auto} h1{color:#17a673;font-size:22px}
+    h2{font-size:16px;margin:2px 0 8px} .sub{color:#8a97a6;font-size:12px}
     .card{background:#fff;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 2px 10px rgba(0,0,0,.06)}
     input,textarea{padding:9px;border:1px solid #cdd6df;border-radius:8px;width:100%;font-size:14px}
-    button.primary{background:#17a673;color:#fff;border:0;padding:10px 18px;border-radius:9px;cursor:pointer;font-size:14px;margin-top:10px}
-    button.primary:active{transform:translateY(1px)}
+    button{border:0;border-radius:9px;cursor:pointer;font-size:14px;padding:9px 16px}
+    button.primary{background:#17a673;color:#fff;margin-top:10px} button.ghost{background:#eef1f5;color:#334;margin:10px 6px 0 0}
     .flex{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
     .ai{background:linear-gradient(135deg,#eafaf3,#eef4ff);border-left:4px solid #17a673;border-radius:10px;padding:14px}
     .ai h3{margin:0 0 8px;font-size:14px;color:#0f7a54} .ai p{margin:6px 0;line-height:1.7;font-size:14px}
     .barrow{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
     .barrow .name{width:120px;flex-shrink:0} .barrow .val{width:52px;text-align:right;color:#556}
-    .track{flex:1;background:#eef1f5;border-radius:6px;height:16px;overflow:hidden}
-    .fill{height:16px;border-radius:6px;transition:width .8s ease}
+    .track{flex:1;background:#eef1f5;border-radius:6px;height:16px;overflow:hidden} .fill{height:16px;border-radius:6px;transition:width .8s ease}
     .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:bold}
     .sov{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:8px 0}
-    .sov span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold;transition:width .8s ease}
+    .sov span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold}
     .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#556;margin-top:4px}
     .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
-    .note{color:#b5651d;font-size:12px}
-    @media(max-width:640px){body{padding:14px} .wrap{max-width:100%} .barrow .name{width:88px} h1{font-size:19px}}
+    table{border-collapse:collapse;width:100%;font-size:13px} th,td{border:1px solid #e3e8ee;padding:7px;text-align:center} th{background:#eafaf1}
+    td.f{text-align:left} .win{background:#e7f7ef;font-weight:bold;color:#0f7a54} .lose{background:#fdeeee;color:#c0392b}
+    .note{color:#b5651d;font-size:12px} .muted{color:#8a97a6}
+    @media(max-width:640px){body{padding:14px} .wrap{max-width:100%} .barrow .name{width:88px} h1{font-size:19px}
+      table{display:block;overflow-x:auto;white-space:nowrap;font-size:12px}}
   </style>
 </head>
 <body><div id="root"></div>
 <script type="text/plain" id="__jsx">
-const OWN = {name:"自社(digitalidentity.co.jp)", total:68, sov:28,
-  factors:[
-    {k:"冒頭の結論", s:15, max:15}, {k:"見出し構造", s:13, max:15},
-    {k:"箇条書き・表", s:4, max:15}, {k:"FAQ", s:11, max:15},
-    {k:"統計・出典", s:11, max:20}, {k:"鮮度", s:8, max:10}, {k:"定義文", s:6, max:10}]};
-const COMPETITORS = [
-  {name:"競合A", total:82, sov:41, color:"#e8743b"},
-  {name:"自社", total:68, sov:28, color:"#17a673"},
-  {name:"競合B", total:55, sov:18, color:"#4c8bf5"},
-  {name:"競合C", total:45, sov:13, color:"#9b6dd6"},
+const FK=["冒頭の結論","見出し構造","箇条書き・表","FAQ","統計・出典","鮮度","定義文"];
+const FMAX=[15,15,15,15,20,10,10];
+const DEFAULT_URL="https://digitalidentity.co.jp/";
+const OWN_DEFAULT=[15,13,4,11,11,8,6];
+const COMPS=[
+  {name:"競合A", f:[15,13,12,12,18,7,5], color:"#e8743b"},
+  {name:"競合B", f:[10,9,6,8,10,7,5], color:"#4c8bf5"},
+  {name:"競合C", f:[8,8,4,6,8,6,5], color:"#9b6dd6"},
 ];
+const KEY="geo_history_v1";
 function color(v){ return v>=70?"#17a673":v>=50?"#f0a500":"#e0533b"; }
+function hashStr(s){let h=7;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h);}
+function genOwn(url){
+  if(url.trim()===DEFAULT_URL) return OWN_DEFAULT.slice();
+  const seed=hashStr(url);
+  return FMAX.map((m,i)=>Math.max(1,Math.round(m*(((seed>> (i*3))&7)/7*0.65+0.3))));
+}
+function totalOf(f){return f.reduce((a,b)=>a+b,0);}
+function sov(ownTotal){
+  const all=[ownTotal,...COMPS.map(c=>totalOf(c.f))]; const sum=all.reduce((a,b)=>a+b,0);
+  return Math.round(ownTotal/sum*100);
+}
 
 function Gauge({value}){
-  const [disp,setDisp]=React.useState(0);
-  React.useEffect(()=>{ let v=0; const t=setInterval(()=>{v+=2; if(v>=value){v=value;clearInterval(t);} setDisp(v);},16); return ()=>clearInterval(t);},[value]);
-  const r=60, C=2*Math.PI*r, off=C*(1-disp/100), col=color(value);
-  return (
-    <svg width="150" height="150" viewBox="0 0 150 150">
-      <circle cx="75" cy="75" r={r} fill="none" stroke="#eef1f5" strokeWidth="14"/>
-      <circle cx="75" cy="75" r={r} fill="none" stroke={col} strokeWidth="14" strokeLinecap="round"
-        strokeDasharray={C} strokeDashoffset={off} transform="rotate(-90 75 75)"/>
-      <text x="75" y="72" textAnchor="middle" fontSize="34" fontWeight="bold" fill={col}>{disp.toFixed(0)}</text>
-      <text x="75" y="95" textAnchor="middle" fontSize="12" fill="#8a97a6">/ 100</text>
-    </svg>
-  );
+  const [d,setD]=React.useState(0);
+  React.useEffect(()=>{setD(0);let v=0;const t=setInterval(()=>{v+=2;if(v>=value){v=value;clearInterval(t);}setD(v);},16);return ()=>clearInterval(t);},[value]);
+  const r=60,C=2*Math.PI*r,off=C*(1-d/100),col=color(value);
+  return (<svg width="150" height="150" viewBox="0 0 150 150">
+    <circle cx="75" cy="75" r={r} fill="none" stroke="#eef1f5" strokeWidth="14"/>
+    <circle cx="75" cy="75" r={r} fill="none" stroke={col} strokeWidth="14" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={off} transform="rotate(-90 75 75)"/>
+    <text x="75" y="72" textAnchor="middle" fontSize="34" fontWeight="bold" fill={col}>{d.toFixed(0)}</text>
+    <text x="75" y="95" textAnchor="middle" fontSize="12" fill="#8a97a6">/ 100</text></svg>);
 }
-function Factors({factors}){
-  return (<div>{factors.map((f,i)=>(
-    <div className="barrow" key={i}>
-      <span className="name">{f.k}</span>
-      <div className="track"><div className="fill" style={{width:(f.s/f.max*100)+"%",background:color(f.s/f.max*100)}}></div></div>
-      <span className="val">{f.s}/{f.max}</span>
-    </div>))}</div>);
-}
-function CompetitorBars({data}){
-  const mx=Math.max(...data.map(d=>d.total));
-  return (<div>{[...data].sort((a,b)=>b.total-a.total).map((d,i)=>(
-    <div className="barrow" key={i}>
-      <span className="name" style={{fontWeight:d.name==="自社"?"bold":"normal"}}>{d.name}{d.name==="自社"?" ★":""}</span>
-      <div className="track"><div className="fill" style={{width:(d.total/mx*100)+"%",background:d.color}}></div></div>
-      <span className="val">{d.total}</span>
-    </div>))}</div>);
-}
-function ShareOfVoice({data}){
-  return (<div>
-    <div className="sov">{[...data].sort((a,b)=>b.sov-a.sov).map((d,i)=>(
-      <span key={i} style={{width:d.sov+"%",background:d.color}}>{d.sov>=12?d.sov+"%":""}</span>))}</div>
-    <div className="legend">{data.map((d,i)=>(<span key={i}><i style={{background:d.color}}></i>{d.name} {d.sov}%</span>))}</div>
-  </div>);
-}
-function aiInsight(own, comps){
-  const top=[...comps].sort((a,b)=>b.total-a.total)[0];
-  const rank=[...comps].sort((a,b)=>b.sov-a.sov).findIndex(c=>c.name==="自社")+1;
-  const best=[...own.factors].sort((a,b)=>(b.s/b.max)-(a.s/a.max))[0];
-  const worst=[...own.factors].sort((a,b)=>(a.s/a.max)-(b.s/b.max))[0];
-  const gap=top.total-own.total;
-  const uplift=own.factors.reduce((s,f)=>s+(f.max-f.s),0);
-  return [
-    "総合GEOスコアは "+own.total+"点。引用シェアは業界"+rank+"位("+own.sov+"%)で、首位「"+top.name+"」("+top.total+"点)とは "+gap+"点差です。",
-    "強みは「"+best.k+"」("+best.s+"/"+best.max+")で、生成AIに抜粋引用されやすい構造です。一方、最も伸びしろが大きいのは「"+worst.k+"」("+worst.s+"/"+worst.max+")。",
-    "優先度①「箇条書き・比較表の追加」と②「統計・数値＋出典の明記」を実施すれば合計で最大 +"+Math.min(uplift,27)+"点。引用シェア首位("+top.sov+"%超)も射程に入ります。",
-  ];
-}
+
 function App(){
-  const [ran,setRan]=React.useState(true);
-  const insight=aiInsight(OWN,COMPETITORS);
-  return (
-    <div className="wrap">
-      <h1>GEO診断ツール <span className="sub">生成AI検索での「引用されやすさ」を可視化</span></h1>
-      <div className="card">
-        <h2>診断対象</h2>
-        <textarea rows="2" defaultValue="https://digitalidentity.co.jp/"></textarea>
-        <button className="primary" onClick={()=>{setRan(false);setTimeout(()=>setRan(true),80);}}>GEO診断を実行</button>
-      </div>
-      {ran && <div className="card flex" style={{justifyContent:"space-between"}}>
-        <div style={{textAlign:"center"}}>
-          <h2>総合GEOスコア</h2><Gauge value={OWN.total}/>
-          <div><span className="badge" style={{background:"#eafaf3",color:"#0f7a54"}}>引用シェア 業界2位</span></div>
-        </div>
-        <div style={{flex:1,minWidth:260}}>
-          <div className="ai"><h3>🤖 AI自動分析</h3>{insight.map((t,i)=><p key={i}>{t}</p>)}</div>
-        </div>
-      </div>}
-      {ran && <div className="card"><h2>競合比較（総合GEOスコア）</h2><CompetitorBars data={COMPETITORS}/></div>}
-      {ran && <div className="card"><h2>引用シェア Share of Voice</h2>
-        <p className="sub">生成AI検索でどのサイトが引用されるかの取り分</p><ShareOfVoice data={COMPETITORS}/></div>}
-      {ran && <div className="card"><h2>因子別スコア（7指標）</h2><Factors factors={OWN.factors}/></div>}
-      {ran && <div className="card"><h2>改善計画（68 → 見込 95）</h2>
-        <div className="barrow"><span className="name">箇条書き・比較表を追加</span>
-          <div className="track"><div className="fill" style={{width:"41%",background:"#17a673"}}></div></div><span className="val">+11</span></div>
-        <div className="barrow"><span className="name">統計・数値＋出典を明記</span>
-          <div className="track"><div className="fill" style={{width:"33%",background:"#17a673"}}></div></div><span className="val">+9</span></div>
-        <div className="barrow"><span className="name">定義文「XとはY」を追加</span>
-          <div className="track"><div className="fill" style={{width:"26%",background:"#17a673"}}></div></div><span className="val">+7</span></div>
-        <p className="note">※改善効果は想定値です。実施後にPoCで検証してください。</p></div>}
+  const [url,setUrl]=React.useState(DEFAULT_URL);
+  const [own,setOwn]=React.useState(OWN_DEFAULT.slice());
+  const [hist,setHist]=React.useState(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]");}catch(e){return [];}});
+  const [saved,setSaved]=React.useState(false);
+  const total=totalOf(own), share=sov(total);
+  const compTotals=COMPS.map(c=>({name:c.name,total:totalOf(c.f),color:c.color}));
+  const board=[{name:"自社",total,color:"#17a673"},...compTotals].sort((a,b)=>b.total-a.total);
+  const rank=[...board].findIndex(b=>b.name==="自社")+1;
+  const shares=[{name:"自社",v:share,color:"#17a673"},...COMPS.map(c=>({name:c.name,v:sov(totalOf(c.f)),color:c.color}))];
+
+  const run=()=>{ setOwn(genOwn(url)); setSaved(false); };
+  const save=()=>{ const h=[{ts:new Date().toLocaleString("ja-JP"),url,total,share},...hist].slice(0,8);
+    setHist(h); localStorage.setItem(KEY,JSON.stringify(h)); setSaved(true); };
+  const prev = hist.length? hist[0].total : null;
+
+  const best=FK.map((k,i)=>({k,r:own[i]/FMAX[i]})).sort((a,b)=>b.r-a.r)[0];
+  const worst=FK.map((k,i)=>({k,r:own[i]/FMAX[i]})).sort((a,b)=>a.r-b.r)[0];
+  const top=board[0];
+
+  return (<div className="wrap">
+    <h1>GEO診断ツール <span className="sub">生成AI検索での「引用されやすさ」を可視化</span></h1>
+
+    <div className="card">
+      <h2>診断対象</h2>
+      <textarea rows="2" value={url} onChange={e=>setUrl(e.target.value)}></textarea>
+      <button className="primary" onClick={run}>GEO診断を実行</button>
+      <button className="ghost" onClick={()=>{setUrl(DEFAULT_URL);setOwn(OWN_DEFAULT.slice());setSaved(false);}}>やり直し(リセット)</button>
+      <button className="ghost" onClick={save}>{saved?"保存しました✓":"この結果を保存"}</button>
+      {prev!==null && <span className="sub"> 前回保存 {prev}点 → 今回 {total}点（{total-prev>=0?"+":""}{total-prev}）</span>}
     </div>
-  );
+
+    <div className="card flex" style={{justifyContent:"space-between"}}>
+      <div style={{textAlign:"center"}}><h2>総合GEOスコア</h2><Gauge value={total}/>
+        <div><span className="badge" style={{background:"#eafaf3",color:"#0f7a54"}}>引用シェア 業界{rank}位</span></div></div>
+      <div style={{flex:1,minWidth:260}}>
+        <div className="ai"><h3>🤖 AI自動分析</h3>
+          <p>総合GEOスコアは <b>{total}点</b>。引用シェアは業界<b>{rank}位({share}%)</b>で、首位「{top.name}」({top.total}点)とは {top.total-total}点差です。</p>
+          <p>強みは「{best.k}」、最も伸びしろが大きいのは「{worst.k}」。</p>
+          <p>👉 まず「{worst.k}」を強化すれば引用シェア上位が狙えます。</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="card"><h2>競合比較（総合GEOスコア）</h2>
+      {board.map((d,i)=>(<div className="barrow" key={i}>
+        <span className="name" style={{fontWeight:d.name==="自社"?"bold":"normal"}}>{d.name}{d.name==="自社"?" ★":""}</span>
+        <div className="track"><div className="fill" style={{width:(d.total/Math.max(...board.map(b=>b.total))*100)+"%",background:d.color}}></div></div>
+        <span className="val">{d.total}</span></div>))}
+    </div>
+
+    <div className="card"><h2>因子別 競合比較（どこで勝ち負けしているか）</h2>
+      <p className="sub">緑=自社が最上位 / 赤=自社が最下位。7指標で競合との差を詳細に把握。</p>
+      <table><thead><tr><th className="f">指標</th><th>自社</th>{COMPS.map((c,i)=><th key={i}>{c.name}</th>)}</tr></thead>
+        <tbody>{FK.map((k,i)=>{
+          const vals=[own[i],...COMPS.map(c=>c.f[i])]; const mx=Math.max(...vals),mn=Math.min(...vals);
+          const cls=own[i]===mx?"win":(own[i]===mn?"lose":"");
+          return (<tr key={i}><td className="f">{k}<span className="muted"> /{FMAX[i]}</span></td>
+            <td className={cls}>{own[i]}</td>{COMPS.map((c,j)=><td key={j}>{c.f[i]}</td>)}</tr>);
+        })}
+        <tr><td className="f"><b>合計</b></td><td><b>{total}</b></td>{compTotals.map((c,j)=><td key={j}><b>{c.total}</b></td>)}</tr>
+        </tbody></table>
+    </div>
+
+    <div className="card"><h2>引用シェア Share of Voice</h2>
+      <div className="sov">{[...shares].sort((a,b)=>b.v-a.v).map((s,i)=>(<span key={i} style={{width:s.v+"%",background:s.color}}>{s.v>=12?s.v+"%":""}</span>))}</div>
+      <div className="legend">{shares.map((s,i)=>(<span key={i}><i style={{background:s.color}}></i>{s.name} {s.v}%</span>))}</div>
+    </div>
+
+    {hist.length>0 && <div className="card"><h2>保存した診断履歴（このブラウザに保存）</h2>
+      <table><thead><tr><th className="f">日時</th><th className="f">URL</th><th>スコア</th><th>引用シェア</th></tr></thead>
+        <tbody>{hist.map((h,i)=>(<tr key={i}><td className="f">{h.ts}</td><td className="f muted">{h.url}</td><td><b>{h.total}</b></td><td>{h.share}%</td></tr>))}</tbody></table>
+      <button className="ghost" onClick={()=>{localStorage.removeItem(KEY);setHist([]);}}>履歴を消去</button></div>}
+
+    <p className="note">※競合スコアは業界ベンチのサンプル。URLを変えて「実行」すると自社スコアが変化します（保存はこのブラウザに記録）。</p>
+  </div>);
 }
 </script>
 <script>(function(){var src=document.getElementById("__jsx").textContent;var out=Babel.transform(src,{presets:[["react",{runtime:"classic"}]]}).code;(0,eval)(out);ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));})();</script>
