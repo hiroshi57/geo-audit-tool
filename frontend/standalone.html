@@ -2,171 +2,192 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GEO診断ツール（実測版）</title>
+  <title>GEO診断ツール（URL実解析）</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
   <style>
     body{font-family:system-ui,sans-serif;background:#f5f7f9;margin:0;padding:24px;color:#152238}
-    .wrap{max-width:860px;margin:0 auto} h1{color:#17a673;font-size:22px}
-    h2{font-size:16px;margin:2px 0 8px} .sub{color:#8a97a6;font-size:12px}
+    .wrap{max-width:880px;margin:0 auto} h1{color:#17a673;font-size:22px}
+    h2{font-size:16px;margin:2px 0 8px} h3{font-size:14px;margin:10px 0 4px} .sub{color:#8a97a6;font-size:12px}
     .card{background:#fff;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 2px 10px rgba(0,0,0,.06)}
     .real{background:#e7f7ef;border:1px solid #b6e3cc;border-radius:10px;padding:8px 12px;font-size:13px;color:#0f7a54;margin-bottom:8px}
-    textarea{width:100%;border:1px solid #cdd6df;border-radius:8px;padding:9px;font-size:13px;font-family:ui-monospace,monospace}
-    input.nm{border:1px solid #cdd6df;border-radius:6px;padding:5px 8px;font-size:13px;width:160px}
-    button{border:0;border-radius:9px;cursor:pointer;font-size:14px;padding:9px 16px}
-    button.primary{background:#17a673;color:#fff;margin-top:8px} button.ghost{background:#eef1f5;color:#334;margin:8px 6px 0 0;font-size:13px;padding:7px 12px}
+    input.url{width:100%;border:1px solid #cdd6df;border-radius:8px;padding:9px;font-size:13px}
+    input.nm{border:1px solid #cdd6df;border-radius:6px;padding:5px 8px;font-size:13px;width:150px;margin-bottom:4px}
+    button{border:0;border-radius:9px;cursor:pointer;font-size:14px;padding:10px 18px}
+    button.primary{background:#17a673;color:#fff;margin-top:6px} button.primary:disabled{background:#9ccdb8}
+    button.ghost{background:#eef1f5;color:#334;font-size:13px;padding:7px 12px;margin-left:8px}
+    .site{border:1px solid #e6ebf1;border-radius:10px;padding:12px;margin:8px 0}
+    .lvl{display:inline-block;padding:3px 12px;border-radius:20px;font-weight:bold;font-size:13px;color:#fff}
     .barrow{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:13px}
-    .barrow .name{width:150px;flex-shrink:0} .barrow .val{width:52px;text-align:right;color:#556}
+    .barrow .name{width:130px;flex-shrink:0} .barrow .val{width:60px;text-align:right;color:#556}
     .track{flex:1;background:#eef1f5;border-radius:6px;height:15px;overflow:hidden} .fill{height:15px;border-radius:6px}
     table{border-collapse:collapse;width:100%;font-size:12.5px} th,td{border:1px solid #e3e8ee;padding:7px;text-align:center} th{background:#eafaf1} td.f,th.f{text-align:left}
-    .win{background:#e7f7ef;font-weight:bold;color:#0f7a54} .lose{background:#fdeeee;color:#c0392b}
+    .up{color:#0f7a54;font-weight:bold} .down{color:#c0392b;font-weight:bold}
     .ai{background:linear-gradient(135deg,#eafaf3,#eef4ff);border-left:4px solid #17a673;border-radius:10px;padding:14px;font-size:14px;line-height:1.7}
-    .site{border:1px solid #e6ebf1;border-radius:10px;padding:12px;margin:8px 0}
-    .note{color:#8a97a6;font-size:12px} .muted{color:#8a97a6}
-    @media(max-width:640px){body{padding:14px} .wrap{max-width:100%} .barrow .name{width:110px} h1{font-size:19px}
+    .plan{background:#f7faff;border:1px solid #dbe6f5;border-radius:10px;padding:12px;margin-top:8px}
+    .plan li{margin:7px 0;line-height:1.6;font-size:13px} .tierlabel{font-weight:bold;color:#1a5fb4;margin-top:8px}
+    .note{color:#8a97a6;font-size:12px} .err{color:#c0392b;font-size:13px}
+    @media(max-width:640px){body{padding:14px} .wrap{max-width:100%} .barrow .name{width:100px} h1{font-size:19px}
       table{display:block;overflow-x:auto;white-space:nowrap;font-size:12px}}
   </style>
 </head>
-<body><div style="max-width:860px;margin:0 auto 4px;background:#fff8e1;border:1px solid #f0d98a;border-radius:10px;padding:8px 14px;font:13px system-ui;color:#7a5b00">🔬 <b>実測版</b>：総合GEO<b>構造スコアは、貼り付けた実コンテンツをその場で解析した実測値</b>です（サンプルではありません／APIキー不要）。※「AIが実際に引用するか」は別途PoC検証が必要です。</div>
+<body><div style="max-width:880px;margin:0 auto 4px;background:#fff8e1;border:1px solid #f0d98a;border-radius:10px;padding:8px 14px;font:13px system-ui;color:#7a5b00">🔬 <b>実解析版</b>：URLを入れると<b>実ページを取得(r.jina.ai経由)して構造を実測</b>します。構造スコアは実測、重みは当社ヒューリスティック。「AIが実際に引用するか」はPoCで検証要。</div>
 <div id="root"></div>
 <script type="text/plain" id="__jsx">
-// ===== 実測ロジック: 貼り付けたHTML/テキストからGEO構造スコアを算出 =====
 const FK=["冒頭の結論","見出し構造","箇条書き・表","FAQ/Q&A","統計・出典","鮮度(日付)","定義文"];
+const FSHORT=["結論","見出し","箇条書き","FAQ","出典","鮮度","定義"];
 const FMAX=[15,15,15,15,20,10,10];
+const TIP=["記事冒頭に3行の結論(TL;DR)を置く","見出しを疑問形(「〜とは?」)にし階層化","箇条書き・比較表を追加","FAQ/Q&Aセクションを設ける","統計・数値＋出典を明記(最重要)","公開日/更新日を明記","「XとはYである」定義文を入れる"];
 const SUMMARY=["結論","要約","まとめ","tl;dr","summary","この記事では","ポイントは","結論から"];
 const QWORD=["とは","なぜ","どうやって","方法","？","?","how","what","why","できる","違い"];
 const QA=["q.","q:","質問","faq","よくある質問","a.","a:","回答","q&a"];
-const SRC=["出典","参照","引用","according to","source","調査","によると","参考文献","https://","http://"];
-const NUM=/\d+(\.\d+)?\s*(%|％|円|人|件|倍|位|万|億|kg|km|時間|分|秒|件|pt|ポイント)/g;
+const SRC=["出典","参照","引用","source","調査","によると","参考文献","https://","http://"];
+const NUM=/\d+(\.\d+)?\s*(%|％|円|人|件|倍|位|万|億|kg|km|時間|分|秒|pt|ポイント)/g;
 const DATE=/(20\d{2})[年\/\-.](\d{1,2})|更新日|公開日|最終更新|updated|投稿日/i;
 const DEF=/.{2,40}(とは|というのは)[\s\S]{2,60}?(です|である|を指す|のこと)/;
-const has=(t,arr)=>arr.some(w=>t.toLowerCase().includes(w));
+const has=(t,a)=>a.some(w=>t.toLowerCase().includes(w));
 
 function parse(input){
-  input=(input||"").trim();
-  let text="",h=[],lists=0,tables=0,links=0,first="";
-  if(input.includes("<")){ // HTML
+  input=(input||"").trim(); let text="",h=[],lists=0,tables=0,links=0,first="";
+  if(input.includes("<")){
     const doc=new DOMParser().parseFromString(input,"text/html");
     doc.querySelectorAll("script,style").forEach(e=>e.remove());
     ["h1","h2","h3"].forEach(t=>doc.querySelectorAll(t).forEach(e=>h.push(e.textContent.trim())));
-    lists=doc.querySelectorAll("ul,ol").length; tables=doc.querySelectorAll("table").length;
-    links=doc.querySelectorAll("a").length;
-    text=(doc.body?doc.body.textContent:input);
+    lists=doc.querySelectorAll("ul,ol").length; tables=doc.querySelectorAll("table").length; links=doc.querySelectorAll("a").length;
+    text=doc.body?doc.body.textContent:input;
     const ps=[...doc.querySelectorAll("p,div,li")].map(e=>e.textContent.trim()).filter(x=>x.length>=20);
     first=ps[0]||text.slice(0,200);
-  }else{ // プレーン/Markdown
+  }else{
     text=input;
     input.split(/\n/).forEach(l=>{const s=l.trim();
-      if(/^#{1,3}\s/.test(s))h.push(s.replace(/^#+\s/,""));
-      if(/^([-*・]|\d+\.)\s/.test(s))lists++;});
+      if(/^#{1,6}\s/.test(s))h.push(s.replace(/^#+\s/,""));
+      if(/^([-*・]|\d+\.)\s/.test(s))lists++;
+      if(/^\|.*\|/.test(s))tables=1;});
     links=(input.match(/https?:\/\//g)||[]).length;
     first=input.split(/\n/).map(x=>x.trim()).find(x=>x.length>=20)||input.slice(0,200);
   }
   return {text,h,lists,tables,links,first};
 }
 function score(input){
-  const p=parse(input); const t=p.text; const f=[];
-  // 1 冒頭の結論
-  let s=(has(p.first,SUMMARY)||(p.first.length>=30&&p.first.length<=400))?15:5;
-  f.push({s,note:has(p.first,SUMMARY)?"冒頭に結論/要約あり":s===15?"冒頭に十分な要約文":"冒頭の結論が弱い"});
-  // 2 見出し
-  const qh=p.h.filter(x=>has(x,QWORD)).length;
-  let hs=0; if(p.h.length>=1)hs+=6; if(p.h.length>=3)hs+=5; if(qh>=1)hs+=4; hs=Math.min(hs,15);
-  f.push({s:hs,note:`見出し${p.h.length}個(疑問形${qh})`});
-  // 3 構造化
-  const st=Math.min(p.lists*4+p.tables*5,15);
-  f.push({s:st,note:`リスト${p.lists}/表${p.tables}`});
-  // 4 QA
-  const qa=has(t,QA)?15:3; f.push({s:qa,note:qa>3?"FAQ/Q&Aあり":"Q&A構造なし"});
-  // 5 統計・出典
-  const nums=(t.match(NUM)||[]).length; const src=has(t,SRC)||p.links>=2;
-  const ev=Math.min(Math.min(nums*3,12)+(src?8:0),20);
-  f.push({s:ev,note:`数値${nums}箇所/出典${src?"あり":"なし"}`});
-  // 6 鮮度
-  const fr=DATE.test(t)?10:2; f.push({s:fr,note:fr>2?"日付あり":"日付なし"});
-  // 7 定義文
-  const ec=DEF.test(t)?10:3; f.push({s:ec,note:ec>3?"定義文あり":"定義文なし"});
-  const factors=f.map((x,i)=>({k:FK[i],s:x.s,max:FMAX[i],note:x.note}));
-  const total=factors.reduce((a,x)=>a+x.s,0);
-  const sug=[]; const tip=["記事冒頭に3行の結論(TL;DR)を置く","見出しを疑問形にする","箇条書き・比較表を追加","FAQ/Q&Aを設ける","統計・数値と出典を明記(最重要)","公開日/更新日を明記","「XとはYである」定義文を入れる"];
-  factors.forEach((x,i)=>{if(x.s<x.max*0.7)sug.push({t:tip[i],up:x.max-x.s});});
-  sug.sort((a,b)=>b.up-a.up);
-  return {factors,total,sug};
+  const p=parse(input); const t=p.text; const raw=[];
+  raw.push((has(p.first,SUMMARY)||(p.first.length>=30&&p.first.length<=400))?15:5);
+  const qh=p.h.filter(x=>has(x,QWORD)).length; let hs=0; if(p.h.length>=1)hs+=6; if(p.h.length>=3)hs+=5; if(qh>=1)hs+=4; raw.push(Math.min(hs,15));
+  raw.push(Math.min(p.lists*4+p.tables*5,15));
+  raw.push(has(t,QA)?15:3);
+  const nums=(t.match(NUM)||[]).length, src=has(t,SRC)||p.links>=2; raw.push(Math.min(Math.min(nums*3,12)+(src?8:0),20));
+  raw.push(DATE.test(t)?10:2);
+  raw.push(DEF.test(t)?10:3);
+  const f=raw.map((s,i)=>({k:FK[i],s,max:FMAX[i]}));
+  return {f,total:raw.reduce((a,b)=>a+b,0)};
 }
-const SAMPLE=`<h1>GEO(生成AI最適化)とは？</h1>
-<p>結論: GEOとは、ChatGPTやPerplexityなどの生成AI検索に引用されやすいようにコンテンツを最適化する施策です。本記事では要点を3つで解説します。更新日 2026-07-01。</p>
-<h2>GEOはなぜ重要？</h2>
-<p>ある調査によると、検索の約40%が生成AI経由になると予測されています（出典: 業界レポート）。</p>
-<ul><li>引用率が2.5倍</li><li>流入が30%増</li></ul>
-<h2>よくある質問(FAQ)</h2>
-<p>Q. SEOとの違いは？ A. 引用最適化が中心です。</p>`;
+async function fetchPage(url){
+  const u=url.trim(); if(!u)return null;
+  const r=await fetch("https://r.jina.ai/"+u,{headers:{"Accept":"text/plain"}});
+  if(!r.ok)throw new Error("取得失敗("+r.status+")");
+  return await r.text();
+}
 const color=v=>v>=70?"#17a673":v>=50?"#f0a500":"#e0533b";
+function level(t){return t>=80?["優秀","#0f7a54"]:t>=60?["良好","#17a673"]:t>=40?["標準","#f0a500"]:["要改善","#e0533b"];}
+
+// 7軸レーダーチャート(自社＋競合オーバーレイ)
+function Radar({own,comp}){
+  const cx=150,cy=140,R=100,N=7;
+  const ang=i=>-Math.PI/2+i*2*Math.PI/N;
+  const pt=(i,ratio)=>[cx+Math.cos(ang(i))*R*ratio, cy+Math.sin(ang(i))*R*ratio];
+  const poly=arr=>arr.map((v,i)=>pt(i,v.s/v.max).join(",")).join(" ");
+  return (<svg width="100%" viewBox="0 0 300 300" style={{maxWidth:360}}>
+    {[0.33,0.66,1].map((rr,k)=>(<polygon key={k} points={FK.map((_,i)=>pt(i,rr).join(",")).join(" ")} fill="none" stroke="#e3e8ee"/>))}
+    {FK.map((_,i)=>{const[x,y]=pt(i,1);return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#e3e8ee"/>;})}
+    {comp && <polygon points={poly(comp.f)} fill="#8aa9d633" stroke="#8aa9d6" strokeWidth="2"/>}
+    <polygon points={poly(own.f)} fill="#17a67333" stroke="#17a673" strokeWidth="2.5"/>
+    {FK.map((_,i)=>{const[x,y]=pt(i,1.18);return <text key={i} x={x} y={y} textAnchor="middle" fontSize="10" fill="#556">{FSHORT[i]}</text>;})}
+  </svg>);
+}
 
 function App(){
   const [sites,setSites]=React.useState([
-    {name:"自社ページ", html:SAMPLE, r:null},
-    {name:"競合A(任意)", html:"", r:null},
-    {name:"競合B(任意)", html:"", r:null},
+    {name:"自社", url:"", r:null},{name:"競合A", url:"", r:null},
   ]);
-  const run=()=>setSites(sites.map(s=>({...s, r: s.html.trim()? score(s.html): null})));
-  const upd=(i,k,v)=>setSites(sites.map((s,j)=>j===i?{...s,[k]:v}:s));
-  const scored=sites.filter(s=>s.r);
-  const own=sites[0].r;
-  const board=[...scored].map(s=>({name:s.name,total:s.r.total})).sort((a,b)=>b.total-a.total);
-  const rank=own?board.findIndex(b=>b.name===sites[0].name)+1:0;
-  const worst=own?[...own.factors].sort((a,b)=>(a.s/a.max)-(b.s/b.max))[0]:null;
-  const best=own?[...own.factors].sort((a,b)=>(b.s/b.max)-(a.s/a.max))[0]:null;
+  const [busy,setBusy]=React.useState(false); const [err,setErr]=React.useState("");
+  const upd=(i,k,v)=>setSites(s=>s.map((x,j)=>j===i?{...x,[k]:v}:x));
+  const analyze=async()=>{
+    setBusy(true);setErr("");
+    try{
+      const out=await Promise.all(sites.map(async s=>{
+        if(!s.url.trim())return {...s,r:null};
+        try{const txt=await fetchPage(s.url);return {...s,r:score(txt)};}
+        catch(e){return {...s,r:null,error:e.message};}
+      }));
+      setSites(out);
+      if(out[0]&&!out[0].r)setErr("自社URLの取得に失敗しました。URLを確認するか、時間をおいて再試行してください。");
+    }catch(e){setErr("解析エラー: "+e.message);}finally{setBusy(false);}
+  };
+  const own=sites[0].r, comp=sites[1]&&sites[1].r;
+  const [lvl,lvlc]=own?level(own.total):["",""];
+  const overall=own&&comp?own.total-comp.total:null;
+  // 逆転プラン: 競合に負けている因子(gap>0)を大きい順
+  const losing=(own&&comp)?own.f.map((f,i)=>({i,k:f.k,own:f.s,comp:comp.f[i].s,gap:comp.f[i].s-f.s,max:f.max,tip:TIP[i]})).filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap):[];
+  // さらなる伸びしろ: 競合に勝っている/同等でも満点でない因子
+  const headroom=own?own.f.map((f,i)=>({i,k:f.k,own:f.s,max:f.max,room:f.max-f.s,tip:TIP[i]})).filter(x=>x.room>0&&!losing.find(l=>l.i===x.i)).sort((a,b)=>b.room-a.room):[];
 
   return (<div className="wrap">
-    <h1>GEO診断ツール <span className="sub">生成AI検索での「引用されやすさ」を実測</span></h1>
+    <h1>GEO診断ツール <span className="sub">URLを入れるだけで、生成AIに引用されやすい構造かを実解析</span></h1>
 
     <div className="card">
-      <div className="real">✅ 下の欄に<b>実際のページのHTMLまたは本文を貼り付け</b>て「実測する」を押すと、その場で構造を解析してスコア化します（自社のみでもOK。競合も貼れば実比較）。</div>
+      <div className="real">🔗 <b>自社と競合のURLを入力</b>して「解析する」を押すと、実ページを取得して構造をスコア化・比較します。</div>
       {sites.map((s,i)=>(<div className="site" key={i}>
         <input className="nm" value={s.name} onChange={e=>upd(i,"name",e.target.value)}/>
-        <textarea rows={i===0?5:2} placeholder={i===0?"ここにHTMLまたは記事本文を貼り付け":"競合ページのHTML/本文（任意）"} value={s.html} onChange={e=>upd(i,"html",e.target.value)}></textarea>
+        <input className="url" placeholder={i===0?"https://自社ページのURL":"https://競合ページのURL（任意）"} value={s.url} onChange={e=>upd(i,"url",e.target.value)}/>
+        {s.error && <div className="err">⚠ {s.name}: {s.error}</div>}
       </div>))}
-      <button className="primary" onClick={run}>実測する</button>
-      <button className="ghost" onClick={()=>{setSites([{name:"自社ページ",html:SAMPLE,r:null},{name:"競合A(任意)",html:"",r:null},{name:"競合B(任意)",html:"",r:null}]);}}>サンプルに戻す</button>
+      <button className="primary" disabled={busy} onClick={analyze}>{busy?"解析中…（数秒）":"解析する"}</button>
+      <button className="ghost" onClick={()=>{upd(0,"url","https://digitalidentity.co.jp/");upd(1,"url","https://www.cyberagent.co.jp/");}}>例のURLを入れる</button>
+      {err && <div className="err" style={{marginTop:8}}>{err}</div>}
     </div>
 
-    {own && <div className="card">
-      <h2>総合GEO構造スコア（実測）</h2>
-      <div style={{fontSize:40,fontWeight:"bold",color:color(own.total)}}>{own.total}<span style={{fontSize:16,color:"#8a97a6"}}> / 100</span></div>
-      <div className="ai" style={{marginTop:8}}><b>🤖 要点（実測値からの自動要約・ルールベース）</b><br/>
-        自社ページの構造スコアは <b>{own.total}点</b>{scored.length>1?`（比較${scored.length}サイト中 ${rank}位）`:""}。
-        強みは「{best.k}」、最も伸びしろが大きいのは「{worst.k}」。
-        👉 「{worst.k}」を改善すると+{worst.max-worst.s}点。まず {own.sug[0]?own.sug[0].t:"現状維持"} が効果的です。</div>
+    {own && <div className="card" style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{textAlign:"center"}}>
+        <h2>{sites[0].name} の総合GEOスコア</h2>
+        <div style={{fontSize:44,fontWeight:"bold",color:color(own.total)}}>{own.total}<span style={{fontSize:16,color:"#8a97a6"}}> /100</span></div>
+        <span className="lvl" style={{background:lvlc}}>水準: {lvl}</span>
+        {comp && <div style={{marginTop:8,fontSize:14}}>競合「{sites[1].name}」({comp.total}点)より <b className={overall>=0?"up":"down"}>{overall>=0?"+"+overall+"点 上":overall+"点 下"}</b></div>}
+      </div>
+      <div><Radar own={own} comp={comp}/><div className="sub" style={{textAlign:"center"}}>■自社 {comp?"／ ■競合":""}（外周=満点）</div></div>
     </div>}
 
-    {own && <div className="card"><h2>因子別スコア（実測・7指標）</h2>
-      {own.factors.map((f,i)=>(<div className="barrow" key={i}>
-        <span className="name">{f.k}</span>
-        <div className="track"><div className="fill" style={{width:(f.s/f.max*100)+"%",background:color(f.s/f.max*100)}}></div></div>
-        <span className="val">{f.s}/{f.max}</span><span className="muted" style={{fontSize:12,width:120}}>{f.note}</span></div>))}
+    {own && <div className="card"><h2>因子別スコア{comp?"（自社 vs 競合）":""}</h2>
+      {own.f.map((f,i)=>{const cv=comp?comp.f[i].s:null;const d=cv!=null?f.s-cv:null;
+        return (<div className="barrow" key={i}>
+          <span className="name">{f.k}</span>
+          <div className="track"><div className="fill" style={{width:(f.s/f.max*100)+"%",background:color(f.s/f.max*100)}}></div></div>
+          <span className="val">{f.s}/{f.max}</span>
+          {cv!=null && <span style={{width:96,fontSize:12}} className={d>=0?"up":"down"}>{d>=0?"▲":"▼"}競合{cv} ({d>=0?"+"+d:d})</span>}
+        </div>);})}
     </div>}
 
-    {scored.length>1 && <div className="card"><h2>競合比較（実測スコア）</h2>
-      {board.map((d,i)=>(<div className="barrow" key={i}>
-        <span className="name" style={{fontWeight:d.name===sites[0].name?"bold":"normal"}}>{d.name}{d.name===sites[0].name?" ★":""}</span>
-        <div className="track"><div className="fill" style={{width:(d.total/board[0].total*100)+"%",background:d.name===sites[0].name?"#17a673":"#8aa9d6"}}></div></div>
-        <span className="val">{d.total}</span></div>))}
-      <h3 style={{fontSize:14,margin:"12px 0 4px"}}>因子別 勝ち負け</h3>
-      <table><thead><tr><th className="f">指標</th>{scored.map((s,i)=><th key={i}>{s.name}</th>)}</tr></thead>
-        <tbody>{FK.map((k,fi)=>{const vals=scored.map(s=>s.r.factors[fi].s);const mx=Math.max(...vals),mn=Math.min(...vals);
-          return (<tr key={fi}><td className="f">{k}<span className="muted"> /{FMAX[fi]}</span></td>
-            {scored.map((s,si)=>{const v=s.r.factors[fi].s;const own0=si===0;const cls=own0?(v>=mx?"win":(v<=mn&&mx!==mn?"lose":"")):"";
-              return <td key={si} className={cls}>{v}</td>;})}</tr>);})}</tbody></table>
+    {own && <div className="card"><h2>🤖 分析と競合を超えるプラン</h2>
+      <div className="ai">
+        {comp
+          ? (overall>=0
+              ? <span>自社は競合「{sites[1].name}」に総合 <b>+{overall}点で上回って</b>います。さらに突き放すには下記「上乗せ」を。</span>
+              : <span>自社は競合「{sites[1].name}」に総合 <b>{Math.abs(overall)}点 負けて</b>います。逆転には、負けている <b>{losing.length}因子</b>を競合水準に上げると <b>+{losing.reduce((a,x)=>a+x.gap,0)}点</b>で逆転可能です。</span>)
+          : <span>競合URLも入れると「どこで勝ち/負けか」と逆転プランを表示します。</span>}
+      </div>
+
+      {losing.length>0 && <div className="plan">
+        <div className="tierlabel">① まず競合を超える（負けている因子を競合水準へ）</div>
+        <ul>{losing.map((x,k)=>(<li key={k}><b>{x.k}</b>：自社{x.own} → 競合{x.comp}（<span className="up">+{x.gap}点</span>）<br/><span className="sub">具体策: {x.tip}</span></li>))}</ul>
+      </div>}
+
+      {headroom.length>0 && <div className="plan">
+        <div className="tierlabel">② さらに引き離す（満点までの伸びしろ）</div>
+        <ul>{headroom.slice(0,4).map((x,k)=>(<li key={k}><b>{x.k}</b>：{x.own}/{x.max}（あと<span className="up">+{x.room}点</span>）— {x.tip}</li>))}</ul>
+      </div>}
+      {comp && losing.length===0 && <p className="sub">全因子で競合以上です。②の伸びしろを埋めて満点(100)を目指しましょう。</p>}
     </div>}
 
-    {own && own.sug.length>0 && <div className="card"><h2>改善提案（実測から自動生成）</h2>
-      {own.sug.map((x,i)=>(<div className="barrow" key={i}>
-        <span className="name" style={{width:"auto",flex:1}}>{i+1}. {x.t}</span>
-        <span className="val" style={{color:"#17a673"}}>+{x.up}</span></div>))}
-      <p className="note">※各因子を満点にした場合の加点。改善効果の目安です。</p></div>}
-
-    <p className="note">※構造スコアは貼付コンテンツの実測（ルールベース）。因子の重みは当社ヒューリスティックで、実際のAI引用との相関はPoCで検証してください。「引用シェア」は実クエリ未実施のため本版では非表示にしています。</p>
+    <p className="note">※実ページ取得は r.jina.ai 経由の簡易解析（本文抽出のため一部の表/装飾は簡略化）。構造スコアは実測、因子重みは当社ヒューリスティック。実際のAI引用可否はPoCで検証してください。</p>
   </div>);
 }
 </script>
