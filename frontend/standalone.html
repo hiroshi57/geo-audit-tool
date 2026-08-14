@@ -39,53 +39,120 @@ const FK=["冒頭の結論","見出し構造","箇条書き・表","FAQ/Q&A","�
 const FSHORT=["結論","見出し","箇条書き","FAQ","出典","鮮度","定義"];
 const FMAX=[15,15,15,15,20,10,10];
 const TIP=["記事冒頭に3行の結論(TL;DR)を置く","見出しを疑問形(「〜とは?」)にし階層化","箇条書き・比較表を追加","FAQ/Q&Aセクションを設ける","統計・数値＋出典を明記(最重要)","公開日/更新日を明記","「XとはYである」定義文を入れる"];
-const SUMMARY=["結論","要約","まとめ","tl;dr","summary","この記事では","ポイントは","結論から"];
-const QWORD=["とは","なぜ","どうやって","方法","？","?","how","what","why","できる","違い"];
-const QA=["q.","q:","質問","faq","よくある質問","a.","a:","回答","q&a"];
-const SRC=["出典","参照","引用","source","調査","によると","参考文献","https://","http://"];
-const NUM=/\d+(\.\d+)?\s*(%|％|円|人|件|倍|位|万|億|kg|km|時間|分|秒|pt|ポイント)/g;
-const DATE=/(20\d{2})[年\/\-.](\d{1,2})|更新日|公開日|最終更新|updated|投稿日/i;
-const DEF=/.{2,40}(とは|というのは)[\s\S]{2,60}?(です|である|を指す|のこと)/;
+const SUMMARY=["結論","要約","まとめ","tl;dr","summary","この記事では","ポイントは","結論から","本記事は","概要"];
+const QWORD=["とは","なぜ","どうやって","方法","？","?","how","what","why","違い","メリット","手順","選び方"];
+const QA=["q.","q:","faq","よくある質問","q&a","よくあるご質問"];
+const SRCWORD=["出典","参照元","引用元","参考文献","によると","調査によれば","source:","出所"];
+const NUM=/\d+(\.\d+)?\s*(%|％|円|人|件|倍|位|万人|億円|kg|km|ポイント)/g;
+// 鮮度: 画像URL等の誤検出を防ぐため「日付を表す文脈」を必須にする
+const DATE=/(公開日|更新日|最終更新|投稿日|published|updated|last\s*modified)[\s:：]*.{0,20}?20\d{2}|20\d{2}年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/i;
+// 定義文: 「〜とは」〜「である/です/を指す」の距離を広げ、実際の定義に届くようにする
+const DEF=/[^\n。]{2,40}(とは|というのは)[^。]{2,200}?(です|である|を指す|のこと|を意味)/;
 const has=(t,a)=>a.some(w=>t.toLowerCase().includes(w));
+// リンクだけの行・ナビゲーション行を本文から除外する（誤スコアの主原因）
+const isNavLine=s=>{
+  if(!s)return true;
+  const stripped=s.replace(/\[[^\]]*\]\([^)]*\)/g,"").replace(/!\[[^\]]*\]\([^)]*\)/g,"").replace(/[#*\-|>\s]/g,"");
+  // マークアップとリンクを除くと中身がほとんど残らない行はナビ/一覧とみなす
+  return stripped.length<12;
+};
 
 function parse(input){
-  input=(input||"").trim(); let text="",h=[],lists=0,tables=0,links=0,first="";
-  if(input.includes("<")){
-    const doc=new DOMParser().parseFromString(input,"text/html");
-    doc.querySelectorAll("script,style").forEach(e=>e.remove());
-    ["h1","h2","h3"].forEach(t=>doc.querySelectorAll(t).forEach(e=>h.push(e.textContent.trim())));
-    lists=doc.querySelectorAll("ul,ol").length; tables=doc.querySelectorAll("table").length; links=doc.querySelectorAll("a").length;
-    text=doc.body?doc.body.textContent:input;
-    const ps=[...doc.querySelectorAll("p,div,li")].map(e=>e.textContent.trim()).filter(x=>x.length>=20);
-    first=ps[0]||text.slice(0,200);
+  input=(input||"").trim();
+  // r.jina.ai が付ける前置き(Title:/URL Source:/Markdown Content:)を除去して本文だけにする
+  const mc=input.indexOf("Markdown Content:");
+  const body=mc>=0?input.slice(mc+"Markdown Content:".length):input;
+  let text="",h=[],lists=0,tables=0,links=0,first="",hLevels={},title="",dateMeta="";
+  if(/<(html|body|div|h1|article)\b/i.test(body)){
+    // ★実HTMLを解析する（見出しの階層を本物のh1/h2/h3から取得できる）
+    const doc=new DOMParser().parseFromString(body,"text/html");
+    const tEl=doc.querySelector("title"); title=tEl?tEl.textContent.trim():"";
+    // 公開日/更新日は meta と time タグから正確に取得する
+    const meta=doc.querySelector('meta[property="article:published_time"],meta[property="article:modified_time"],meta[name="pubdate"],meta[itemprop="datePublished"]');
+    if(meta)dateMeta=meta.getAttribute("content")||"";
+    const tm=doc.querySelector("time[datetime]"); if(!dateMeta&&tm)dateMeta=tm.getAttribute("datetime")||"";
+    doc.querySelectorAll("script,style,nav,header,footer,aside,noscript").forEach(e=>e.remove());
+    // 本文領域があればそこに限定（ナビ由来の誤検出を避ける）
+    const main=doc.querySelector("main,article,[role=main]")||doc.body||doc;
+    ["h1","h2","h3"].forEach((t,li)=>main.querySelectorAll(t).forEach(e=>{
+      const x=e.textContent.trim(); if(x&&x.length<=120){h.push(x);hLevels[li+1]=(hLevels[li+1]||0)+1;}}));
+    lists=[...main.querySelectorAll("ul,ol")].filter(u=>u.querySelectorAll("li").length>=2).length;
+    tables=main.querySelectorAll("table").length; links=main.querySelectorAll("a").length;
+    text=main.textContent||"";
+    const ps=[...main.querySelectorAll("p")].map(e=>e.textContent.trim()).filter(x=>x.length>=40);
+    first=ps[0]||text.trim().slice(0,300);
   }else{
-    text=input;
-    input.split(/\n/).forEach(l=>{const s=l.trim();
-      if(/^#{1,6}\s/.test(s))h.push(s.replace(/^#+\s/,""));
-      if(/^([-*・]|\d+\.)\s/.test(s))lists++;
-      if(/^\|.*\|/.test(s))tables=1;});
-    links=(input.match(/https?:\/\//g)||[]).length;
-    first=input.split(/\n/).map(x=>x.trim()).find(x=>x.length>=20)||input.slice(0,200);
+    text=body;
+    body.split(/\n/).forEach(l=>{const s=l.trim();
+      const hm=s.match(/^(#{1,6})\s+(.*)$/);
+      if(hm){
+        const title=hm[2].replace(/\[[^\]]*\]\([^)]*\)/g,"").replace(/!\[[^\]]*\]\([^)]*\)/g,"").trim();
+        // 見出しは「短く・リンクの塊でない」ものだけを本物として数える
+        if(title.length>=2&&title.length<=60){h.push(title);const lv=hm[1].length;hLevels[lv]=(hLevels[lv]||0)+1;}
+      }
+      if(/^([-*・]|\d+\.)\s/.test(s)&&!isNavLine(s))lists++;
+      if(/^\|.*\|/.test(s))tables++;});
+    links=(body.match(/https?:\/\//g)||[]).length;
+    // 冒頭 = 見出し・リンク行を除いた最初の実質的な段落
+    first=body.split(/\n/).map(x=>x.trim())
+      .find(x=>x.length>=40&&!/^#{1,6}\s/.test(x)&&!isNavLine(x))||"";
+    const tm=input.match(/^Title:\s*(.+)$/m); if(tm)title=tm[1].trim();
+    const pm=input.match(/^Published Time:\s*(.+)$/m); if(pm)dateMeta=pm[1].trim();
   }
-  return {text,h,lists,tables,links,first};
+  return {text,h,lists,tables,links,first,hLevels,title,dateMeta};
 }
 function score(input){
   const p=parse(input); const t=p.text; const raw=[];
-  raw.push((has(p.first,SUMMARY)||(p.first.length>=30&&p.first.length<=400))?15:5);
-  const qh=p.h.filter(x=>has(x,QWORD)).length; let hs=0; if(p.h.length>=1)hs+=6; if(p.h.length>=3)hs+=5; if(qh>=1)hs+=4; raw.push(Math.min(hs,15));
-  raw.push(Math.min(p.lists*4+p.tables*5,15));
-  raw.push(has(t,QA)?15:3);
-  const nums=(t.match(NUM)||[]).length, src=has(t,SRC)||p.links>=2; raw.push(Math.min(Math.min(nums*3,12)+(src?8:0),20));
-  raw.push(DATE.test(t)?10:2);
+  // ① 冒頭の結論: 長さだけで満点にしない。結論を示す語があるか／適切な要約長かで段階評価
+  let s0=0;
+  if(p.first.length>=40){s0+=5;}
+  if(has(p.first,SUMMARY))s0+=7;
+  if(p.first.length>=60&&p.first.length<=400)s0+=3;
+  raw.push(Math.min(s0,15));
+  // ② 見出し構造: 「数」ではなく「階層があるか」「疑問形か」を見る
+  let hs=0;
+  const lv=Object.keys(p.hLevels).length;
+  if(p.h.length>=3)hs+=4;
+  if(lv>=2)hs+=5;            // h2とh3など複数階層がある＝構造化されている
+  if(lv>=3)hs+=2;
+  const qh=p.h.filter(x=>has(x,QWORD)).length;
+  if(qh>=1)hs+=2; if(qh>=3)hs+=2;
+  raw.push(Math.min(hs,15));
+  // ③ 箇条書き・表: 4行で満点は甘すぎるので基準を引き上げる
+  raw.push(Math.min(Math.min(p.lists,10)*1.5+Math.min(p.tables,2)*3,15));
+  // ④ FAQ: 見出しにFAQがある方が強い
+  const faqInH=p.h.some(x=>has(x,QA));
+  raw.push(faqInH?15:(has(t,QA)?9:2));
+  // ⑤ 統計・出典: 数値と「出典表記」を分けて評価（リンク数では出典と認めない）
+  const nums=(t.match(NUM)||[]).length;
+  const srcWord=has(t,SRCWORD);
+  raw.push(Math.min(Math.min(nums,6)*2+(srcWord?8:0),20));
+  // ⑥ 鮮度: meta/timeタグの日付を最優先。無ければ本文の日付文脈（画像URLは弾く）
+  raw.push(p.dateMeta?10:(DATE.test(t)?8:2));
+  // ⑦ 定義文
   raw.push(DEF.test(t)?10:3);
-  const f=raw.map((s,i)=>({k:FK[i],s,max:FMAX[i]}));
-  return {f,total:raw.reduce((a,b)=>a+b,0)};
+  const f=raw.map((s,i)=>({k:FK[i],s:Math.round(s),max:FMAX[i]}));
+  return {f,total:f.reduce((a,b)=>a+b.s,0),title:p.title,dateMeta:p.dateMeta,textLen:(t||"").trim().length};
 }
 async function fetchPage(url){
-  const u=url.trim(); if(!u)return null;
-  const r=await fetch("https://r.jina.ai/"+u,{headers:{"Accept":"text/plain"}});
-  if(!r.ok)throw new Error("取得失敗("+r.status+")");
-  return await r.text();
+  let u=url.trim(); if(!u)return null;
+  if(!/^https?:\/\//i.test(u))u="https://"+u;
+  // ★実HTMLで取得する（Markdown変換だと見出し階層が失われ、サイトごとに結果がぶれるため）
+  const r=await fetch("https://r.jina.ai/"+u,{headers:{"x-return-format":"html"}});
+  if(!r.ok)throw new Error("取得失敗(HTTP "+r.status+")");
+  const txt=await r.text();
+  // r.jina.ai は取得先が404でもHTTP200を返すため、内容側でエラーを検知する
+  if(/Warning:\s*Target URL returned error\s*(\d+)/i.test(txt)){
+    const m=txt.match(/Warning:\s*Target URL returned error\s*(\d+)/i);
+    throw new Error("ページが存在しません(取得先が "+m[1]+" を返しました)");
+  }
+  const tm=txt.match(/<title[^>]*>([\s\S]{0,200}?)<\/title>/i);
+  const ttl=tm?tm[1].trim():"";
+  if(/404|not\s*found|ページが見つかり|お探しのページ/i.test(ttl)){
+    throw new Error("ページが存在しない可能性があります（タイトル:「"+ttl.slice(0,40)+"」）");
+  }
+  if(txt.trim().length<400)throw new Error("内容がほとんど取得できませんでした（JavaScript描画のみのページの可能性）");
+  return txt;
 }
 const color=v=>v>=70?"#17a673":v>=50?"#f0a500":"#e0533b";
 function level(t){return t>=80?["優秀","#0f7a54"]:t>=60?["良好","#17a673"]:t>=40?["標準","#f0a500"]:["要改善","#e0533b"];}
@@ -146,9 +213,19 @@ function App(){
       {err && <div className="err" style={{marginTop:8}}>{err}</div>}
     </div>
 
+    {own && (own.textLen<1500 || own.f[1].s<=4) && <div className="card">
+      <div style={{background:"#fff4e0",border:"1px solid #f0d98a",borderRadius:10,padding:12,fontSize:13,color:"#8a6100",lineHeight:1.8}}>
+        <b>⚠ このページは本文をうまく取得できませんでした（取得できた本文 {own.textLen.toLocaleString()}文字／見出し検出 {own.f[1].s}点）</b><br/>
+        JavaScriptで内容を描画するサイトの可能性があります。この場合スコアは低く出ますが、
+        <b>生成AIのクローラも同じくJavaScriptを実行しないことが多い</b>ため、「AIから見えていない」という診断自体は妥当なことがあります。
+        正確に測るには、サーバー側で本文を出力する（SSR/静的化）対応をご検討ください。
+      </div>
+    </div>}
+
     {own && <div className="card" style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
       <div style={{textAlign:"center"}}>
         <h2>{sites[0].name} の総合GEOスコア</h2>
+        {own.title && <div className="sub" style={{marginBottom:4}}>解析したページ: 「{own.title.slice(0,50)}」</div>}
         <div style={{fontSize:44,fontWeight:"bold",color:color(own.total)}}>{own.total}<span style={{fontSize:16,color:"#8a97a6"}}> /100</span></div>
         <span className="lvl" style={{background:lvlc}}>水準: {lvl}</span>
         {comp && <div style={{marginTop:8,fontSize:14}}>競合「{sites[1].name}」({comp.total}点)より <b className={overall>=0?"up":"down"}>{overall>=0?"+"+overall+"点 上":overall+"点 下"}</b></div>}
